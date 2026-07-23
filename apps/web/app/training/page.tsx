@@ -28,29 +28,44 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TrainingMilestoneActions } from "@/components/training-milestone-actions";
 import { getCurrentRep } from "@/lib/auth/current-rep";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { trainingMilestones, trainingModules, type TrainingMilestone, type TrainingModule } from "@/lib/training-curriculum";
+import { certificationPrerequisiteKeys, trainingMilestones, trainingModules, type TrainingMilestone, type TrainingModule } from "@/lib/training-curriculum";
 
-type MilestoneStatus = "not-started" | "in-progress" | "complete";
+type MilestoneStatus = "not-started" | "in-progress" | "complete" | "locked";
 
 interface ProgressRow { milestone_key: string; status: "in_progress" | "complete" }
+interface CertificationAttemptRow { score: number; passed: boolean }
+interface CertificationGateState { prerequisitesMet: boolean; remaining: number; attempts: number; bestScore: number | null; certified: boolean }
 
 export default async function TrainingPage() {
   const rep = await getCurrentRep();
   if (!rep) redirect("/login?next=/training");
 
   let savedProgress: ProgressRow[] = [];
+  let certificationAttempts: CertificationAttemptRow[] = [];
   let loadError: string | null = null;
   if (rep.membership) {
     const supabase = await createSupabaseServerClient();
-    const result = await supabase.from("training_milestone_progress")
-      .select("milestone_key, status")
-      .eq("membership_id", rep.membership.id);
-    if (result.error) {
-      console.error("Training progress query failed", result.error);
+    const [progressResult, attemptsResult] = await Promise.all([
+      supabase.from("training_milestone_progress").select("milestone_key, status").eq("membership_id", rep.membership.id),
+      supabase.from("training_certification_attempts").select("score, passed").eq("membership_id", rep.membership.id).order("score", { ascending: false }),
+    ]);
+    if (progressResult.error || attemptsResult.error) {
+      console.error("Training progress query failed", progressResult.error ?? attemptsResult.error);
       loadError = "Training progress could not be loaded. Confirm the training progress migration has been applied.";
-    } else savedProgress = (result.data ?? []) as ProgressRow[];
+    } else {
+      savedProgress = (progressResult.data ?? []) as ProgressRow[];
+      certificationAttempts = (attemptsResult.data ?? []) as CertificationAttemptRow[];
+    }
   }
   const progressByKey = Object.fromEntries(savedProgress.map((row) => [row.milestone_key, row.status])) as Record<string, ProgressRow["status"]>;
+  const remainingPrerequisites = certificationPrerequisiteKeys.filter((key) => progressByKey[key] !== "complete");
+  const certificationGate: CertificationGateState = {
+    prerequisitesMet: remainingPrerequisites.length === 0,
+    remaining: remainingPrerequisites.length,
+    attempts: certificationAttempts.length,
+    bestScore: certificationAttempts[0]?.score ?? null,
+    certified: progressByKey["certification-readiness"] === "complete" || certificationAttempts.some((attempt) => attempt.passed),
+  };
   const completed = trainingMilestones.filter((milestone) => progressByKey[milestone.key] === "complete").length;
   const inProgress = trainingMilestones.filter((milestone) => progressByKey[milestone.key] === "in_progress").length;
   const progress = Math.round((completed / trainingMilestones.length) * 100);
@@ -83,10 +98,12 @@ export default async function TrainingPage() {
         </CardContent>
       </Card>
 
+      {certificationGate.certified && <section className="flex flex-col gap-4 rounded-2xl border border-[#bcd9c7] bg-gradient-to-r from-[#e8f5ed] to-[#f7fbf8] p-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-4"><span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#176044] text-white"><Award className="size-6" /></span><div><p className="text-xs font-bold uppercase tracking-[.14em] text-[#347052]">Certification complete</p><h2 className="mt-1 text-xl font-bold text-[#183d2c]">You are Mercurius quote certified.</h2><p className="mt-1 text-sm text-[#557064]">Best score: {certificationGate.bestScore ?? 80}/100. Your achievement is saved to your rep profile.</p></div></div><Badge className="w-fit bg-[#176044] px-4 py-2 text-white"><Check className="mr-1 size-4" />Certified</Badge></section>}
+
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="space-y-4" aria-labelledby="modules-heading">
           <div><h2 id="modules-heading" className="text-xl font-bold">Learning modules</h2><p className="mt-1 text-sm text-[#6b776f]">Work at your pace. Your next useful action is always one click away.</p></div>
-          {trainingModules.map((module, index) => <ModuleCard key={module.key} module={module} number={index + 1} progressByKey={progressByKey} />)}
+          {trainingModules.map((module, index) => <ModuleCard key={module.key} module={module} number={index + 1} progressByKey={progressByKey} certificationGate={certificationGate} />)}
         </section>
 
         <aside className="space-y-4 lg:sticky lg:top-6" aria-label="Coaching tools">
@@ -101,28 +118,29 @@ export default async function TrainingPage() {
   </main>;
 }
 
-function ModuleCard({ module, number, progressByKey }: { module: TrainingModule; number: number; progressByKey: Record<string, ProgressRow["status"]> }) {
+function ModuleCard({ module, number, progressByKey, certificationGate }: { module: TrainingModule; number: number; progressByKey: Record<string, ProgressRow["status"]>; certificationGate: CertificationGateState }) {
   const complete = module.milestones.filter((milestone) => progressByKey[milestone.key] === "complete").length;
   const estimatedMinutes = module.milestones.reduce((total, milestone) => total + milestone.estimatedMinutes, 0);
   return <Card>
     <CardHeader><div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e8f2ec] text-[#1c6348]">{moduleIcons[module.key]}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[#7b877f]">Module {number}</p><Badge>{complete}/{module.milestones.length} complete</Badge><Badge className="bg-[#f2f4f3] text-[#66736b]"><Timer className="mr-1 size-3" />~{estimatedMinutes} min</Badge></div><h3 className="mt-1 text-lg font-bold">{module.title}</h3><p className="mt-1 text-sm leading-6 text-[#6b776f]">{module.description}</p></div></div></CardHeader>
     <CardContent className="space-y-4">
+      {module.key === "certification" && <CertificationGateBanner gate={certificationGate} />}
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-[#dbe7e0] bg-[#f5f9f7] p-4"><p className="text-xs font-bold uppercase tracking-[.12em] text-[#35624c]">Why it matters</p><p className="mt-2 text-sm leading-6 text-[#52645a]">{module.whyItMatters}</p></div>
         <div className="rounded-xl border bg-[#fafbfa] p-4"><p className="text-xs font-bold uppercase tracking-[.12em] text-[#647169]">Learning objectives</p><ul className="mt-2 space-y-1.5">{module.objectives.map((objective) => <li key={objective} className="flex gap-2 text-sm leading-5 text-[#59675f]"><Check className="mt-0.5 size-3.5 shrink-0 text-[#2b7556]" />{objective}</li>)}</ul></div>
       </div>
-      <div className="divide-y rounded-xl border">{module.milestones.map((milestone) => <MilestoneRow key={milestone.key} milestone={milestone} savedStatus={progressByKey[milestone.key]} />)}</div>
+      <div className="divide-y rounded-xl border">{module.milestones.map((milestone) => <MilestoneRow key={milestone.key} milestone={milestone} savedStatus={progressByKey[milestone.key]} locked={module.key === "certification" && !certificationGate.prerequisitesMet && !certificationGate.certified} />)}</div>
     </CardContent>
   </Card>;
 }
 
-function MilestoneRow({ milestone, savedStatus }: { milestone: TrainingMilestone; savedStatus?: ProgressRow["status"] | undefined }) {
-  const milestoneStatus: MilestoneStatus = savedStatus === "complete" ? "complete" : savedStatus === "in_progress" ? "in-progress" : "not-started";
+function MilestoneRow({ milestone, savedStatus, locked }: { milestone: TrainingMilestone; savedStatus?: ProgressRow["status"] | undefined; locked: boolean }) {
+  const milestoneStatus: MilestoneStatus = savedStatus === "complete" ? "complete" : locked ? "locked" : savedStatus === "in_progress" ? "in-progress" : "not-started";
   const status = statusDetails[milestoneStatus];
   return <div className="flex flex-col gap-3 bg-white p-4 first:rounded-t-xl last:rounded-b-xl sm:flex-row sm:items-center">
     <span className={`grid size-8 shrink-0 place-items-center rounded-full ${status.iconClass}`}>{status.icon}</span>
     <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{milestone.title}</p><Badge className={activityDetails[milestone.type].className}>{activityDetails[milestone.type].label}</Badge></div><p className="mt-1 text-xs leading-5 text-[#6b776f]">{milestone.description}</p><div className="mt-2 flex flex-wrap items-center gap-3"><p className={`text-xs font-semibold ${status.textClass}`}>{status.label}</p><p className="flex items-center gap-1 text-xs text-[#7a867f]"><Timer className="size-3.5" />{milestone.estimatedMinutes} min</p></div></div>
-    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={milestone.locked === true} actionLabel={milestone.actionLabel} lesson={milestone.lesson} />
+    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={locked || milestone.locked === true} actionLabel={milestone.actionLabel} lesson={milestone.lesson} certificationGate={milestone.requiresPassingScore !== undefined} />
   </div>;
 }
 
@@ -143,7 +161,20 @@ const statusDetails: Record<MilestoneStatus, { label: string; icon: React.ReactN
   complete: { label: "Complete", icon: <Check className="size-4" />, iconClass: "bg-[#dcece3] text-[#246247]", textClass: "text-[#287054]" },
   "in-progress": { label: "In progress", icon: <Clock3 className="size-4" />, iconClass: "bg-[#fff0d8] text-[#8b5c14]", textClass: "text-[#8b5c14]" },
   "not-started": { label: "Not started", icon: <Circle className="size-4" />, iconClass: "bg-[#eef1ef] text-[#77837c]", textClass: "text-[#77837c]" },
+  locked: { label: "Locked", icon: <LockKeyhole className="size-4" />, iconClass: "bg-[#eef1ef] text-[#77837c]", textClass: "text-[#77837c]" },
 };
+
+function CertificationGateBanner({ gate }: { gate: CertificationGateState }) {
+  const state = gate.certified ? "Certified" : !gate.prerequisitesMet ? "Locked" : gate.attempts === 0 ? "Ready to attempt" : "Attempted—not passed";
+  const detail = gate.certified
+    ? `Passed with a best score of ${gate.bestScore ?? 80}/100.`
+    : !gate.prerequisitesMet
+      ? `Complete ${gate.remaining} remaining milestone${gate.remaining === 1 ? "" : "s"} in the earlier modules to unlock certification.`
+      : gate.attempts === 0
+        ? "All prerequisite training is complete. Score 80 or higher on the certification scenario to pass."
+        : `Best score: ${gate.bestScore ?? 0}/100. Review your feedback and retry; 80 is required.`;
+  return <div className={`flex gap-3 rounded-xl border p-4 ${gate.certified ? "border-[#c6dfcf] bg-[#edf7f1]" : gate.prerequisitesMet ? "border-amber-200 bg-amber-50" : "border-[#dfe4e1] bg-[#f5f7f6]"}`}><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${gate.certified ? "bg-[#176044] text-white" : "bg-white text-[#66736b]"}`}>{gate.certified ? <Award className="size-5" /> : gate.prerequisitesMet ? <Target className="size-5" /> : <LockKeyhole className="size-5" />}</span><div><div className="flex flex-wrap items-center gap-2"><p className="font-bold">Certification status</p><Badge>{state}</Badge></div><p className="mt-1 text-sm leading-6 text-[#5d6b63]">{detail}</p></div></div>;
+}
 
 function AvatarFeature({ text }: { text: string }) {
   return <div className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-[#2c7959]" /><span className="text-[#5f6e66]">{text}</span></div>;

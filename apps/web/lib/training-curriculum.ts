@@ -18,6 +18,7 @@ export interface TrainingMilestone {
   readonly actionLabel: string;
   readonly lesson?: TrainingLesson;
   readonly practiceScenarioId?: string;
+  readonly requiresPassingScore?: number;
   readonly locked?: boolean;
 }
 
@@ -226,13 +227,16 @@ export const trainingModules: readonly TrainingModule[] = [
     objectives: ["Show consistent package judgment", "Explain pricing and earnings accurately", "Complete a final readiness review"],
     milestones: [
       { key: "certification-knowledge-check", title: "Knowledge readiness check", description: "Confirm your command of packaging, discovery, discounts, and Quote Lab terminology.", estimatedMinutes: 15, type: "certification", actionLabel: "Complete Check" },
-      { key: "certification-readiness", title: "Quote readiness certification", description: "Complete the final self-attestation after finishing both graded practice scenarios.", estimatedMinutes: 20, type: "certification", actionLabel: "Complete Certification" },
+      { key: "certification-readiness", title: "Quote readiness certification", description: "Build and submit the certification scenario. A score of 80 or higher is required to pass.", estimatedMinutes: 25, type: "certification", actionLabel: "Begin Certification", practiceScenarioId: dentalScenarioId, requiresPassingScore: 80 },
       { key: "certification-manager-review", title: "Manager coaching review", description: "Bring your scenario results and learning goal to a focused readiness conversation.", estimatedMinutes: 20, type: "certification", actionLabel: "Review Complete" },
     ],
   },
 ] as const;
 
 export const trainingMilestones = trainingModules.flatMap((module) => module.milestones);
+export const certificationPrerequisiteKeys = trainingModules
+  .filter((module) => module.key !== "certification")
+  .flatMap((module) => module.milestones.map((milestone) => milestone.key));
 export function findTrainingMilestone(key: string) {
   return trainingMilestones.find((milestone) => milestone.key === key);
 }

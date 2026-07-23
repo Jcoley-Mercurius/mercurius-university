@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { CheckCircle2, RotateCcw, Sparkles, Target, X, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Award, CheckCircle2, RotateCcw, Sparkles, Target, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GradePracticeQuoteResult } from "@/app/actions/grade-practice-quote";
 import { cn } from "@/lib/utils";
@@ -16,24 +17,26 @@ export function GradingResults({ result, onDismiss }: {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onDismiss]);
   const { grade } = result;
-  const tone = grade.score === 100 ? "text-[#176044]" : grade.score >= 80 ? "text-[#277457]" : grade.score >= 60 ? "text-amber-700" : "text-red-700";
-  const message = grade.level === "perfect" ? "Perfect quote" : grade.level === "strong" ? "Strong recommendation" : grade.level === "developing" ? "Good foundation—keep refining" : "Let’s try this one again";
+  const certification = result.certification;
+  const tone = certification?.passed ? "text-[#176044]" : grade.score === 100 ? "text-[#176044]" : grade.score >= 80 ? "text-[#277457]" : grade.score >= 60 ? "text-amber-700" : "text-red-700";
+  const message = certification ? (certification.passed ? "Certification earned" : "Not passed yet—keep going") : grade.level === "perfect" ? "Perfect quote" : grade.level === "strong" ? "Strong recommendation" : grade.level === "developing" ? "Good foundation—keep refining" : "Let’s try this one again";
   return <div className="fixed inset-0 z-50 grid place-items-center bg-[#102219]/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="grade-title">
     <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-white shadow-2xl">
       <div className="relative border-b bg-[#f5f8f6] p-6 text-center sm:p-8">
         <button type="button" onClick={onDismiss} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full text-[#607068] hover:bg-white" aria-label="Close grading results"><X className="size-5" /></button>
         <div className="mx-auto grid size-24 place-items-center rounded-full border-8 border-[#e1ece6] bg-white shadow-sm"><span className={cn("text-3xl font-black", tone)}>{grade.score}</span></div>
-        <p className="mt-4 text-xs font-semibold uppercase tracking-[.16em] text-[#6a776f]">Practice score · out of 100</p>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[.16em] text-[#6a776f]">{certification ? `Certification score · ${certification.passingScore} required` : "Practice score · out of 100"}</p>
         <h2 id="grade-title" className="mt-2 text-2xl font-bold">{message}</h2>
         <p className="mt-1 text-sm text-[#68766e]">{result.scenarioTitle}</p>
       </div>
       <div className="space-y-6 p-5 sm:p-7">
+        {certification && <div className={cn("flex gap-3 rounded-xl border p-4", certification.passed ? "border-[#c7dfd0] bg-[#edf7f1]" : "border-amber-200 bg-amber-50")}><Award className={cn("mt-0.5 size-5 shrink-0", certification.passed ? "text-[#176044]" : "text-amber-700")} /><div><p className="font-bold">{certification.passed ? "You are Mercurius quote certified." : `${certification.passingScore - grade.score} more point${certification.passingScore - grade.score === 1 ? "" : "s"} needed to pass.`}</p><p className="mt-1 text-xs leading-5 text-[#5d6b63]">Best certification score: {certification.bestScore}/100. {certification.passed ? "Your certification is saved to your Training Hub." : "Review the coaching below, adjust the quote, and retry when ready."}</p></div></div>}
         <ResultSection icon={<CheckCircle2 className="size-5 text-[#176044]" />} title="What you got right" items={grade.correctDecisions} empty="Keep working through the scenario to earn your first correct decision." tone="success" />
         <ResultSection icon={<XCircle className="size-5 text-red-600" />} title="What needs improvement" items={grade.mistakes} empty="No mistakes—your recommendation matches the perfect answer." tone="error" />
         {grade.coachingNotes.length > 0 && <ResultSection icon={<Sparkles className="size-5 text-amber-600" />} title="Coaching notes" items={grade.coachingNotes} tone="coach" />}
         <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-[#6b786f]">Dismiss to adjust your quote and submit again.</p>
-          <Button autoFocus onClick={onDismiss}><RotateCcw className="size-4" />Try again</Button>
+          <p className="text-xs text-[#6b786f]">{certification?.passed ? "Return to Training to view your completion state." : "Dismiss to adjust your quote and submit again."}</p>
+          {certification?.passed ? <Button asChild autoFocus><Link href="/training"><Award className="size-4" />View Training Hub</Link></Button> : <Button autoFocus onClick={onDismiss}><RotateCcw className="size-4" />Try again</Button>}
         </div>
       </div>
     </div>

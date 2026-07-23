@@ -58,7 +58,7 @@ export interface RepIdentity {
   readonly hasMembership: boolean;
 }
 
-export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId }: { rep: RepIdentity; initialMode?: QuoteMode; initialScenarioId?: string | undefined }) {
+export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId, initialCertificationAttempt = false }: { rep: RepIdentity; initialMode?: QuoteMode; initialScenarioId?: string | undefined; initialCertificationAttempt?: boolean }) {
   const [draft, setDraft] = useState(() => createInitialDraft(initialMode, initialScenarioId));
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
   const [saveResult, setSaveResult] = useState<SaveQuoteUiResult | null>(null);
@@ -142,7 +142,7 @@ export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId }:
   const submitForGrading = () => {
     setGradingError(null);
     startGrading(async () => {
-      const result = await gradePracticeQuoteAction({ scenarioId: draft.scenarioId, quote: quoteInput });
+      const result = await gradePracticeQuoteAction({ scenarioId: draft.scenarioId, quote: quoteInput, ...(initialCertificationAttempt ? { certificationAttempt: true } : {}) });
       if (result.ok) setGradeResult(result);
       else setGradingError(result.message);
     });
@@ -173,6 +173,8 @@ export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId }:
           <ModeButton active={draft.mode === "live"} onClick={() => updateMode("live")} icon={<Store className="size-4" />}>Live quote</ModeButton>
         </div>
       </div>
+
+      {initialCertificationAttempt && draft.mode === "practice" && <div className="mb-5 flex gap-3 rounded-xl border border-[#c9ddcf] bg-[#eef7f1] p-4 text-sm text-[#214d38]"><GraduationCap className="mt-0.5 size-5 shrink-0" /><div><p className="font-bold">Certification attempt</p><p className="mt-1 text-xs leading-5">Build the strongest recommendation you can and submit it for grading. A score of 80 or higher earns certification.</p></div></div>}
 
       {!rep.hasMembership && <div role="alert" className="mb-5 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <AlertTriangle className="mt-0.5 size-5 shrink-0" />
@@ -217,7 +219,7 @@ export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId }:
           data-testid="submit-for-grading"
         >
           {isGrading ? <LoaderCircle className="size-4 animate-spin" /> : <GraduationCap className="size-4" />}
-          {isGrading ? "Grading…" : "Submit for Grading"}
+          {isGrading ? "Grading…" : initialCertificationAttempt ? "Submit Certification" : "Submit for Grading"}
         </Button>}
         <Button variant="outline" className="min-w-0 sm:min-w-36" disabled={pdfState.loading || !draft.vendorName.trim() || !rep.hasMembership} onClick={downloadPdf}>
           {pdfState.loading ? <LoaderCircle className="size-4 animate-spin" /> : <FileDown className="size-4" />}

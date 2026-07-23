@@ -74,6 +74,12 @@ corepack pnpm --filter @mercurius/db db:migrate -- 0002_training_progress.sql
 
 This creates the per-membership milestone progress table and own-rep RLS policies.
 
+Apply the certification-attempt migration after training progress:
+
+```bash
+corepack pnpm --filter @mercurius/db db:migrate -- 0003_training_certification.sql
+```
+
 ## 4. Create the seed rep
 
 Memberships reference `auth.users`, so the seed deliberately does not invent an Auth row:

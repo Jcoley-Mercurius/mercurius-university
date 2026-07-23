@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { TrainingLessonViewer } from "@/components/training-lesson-viewer";
 import type { TrainingLesson } from "@/lib/training-curriculum";
 
-export function TrainingMilestoneActions({ milestoneKey, isPractice, isComplete, locked, actionLabel, lesson }: {
+export function TrainingMilestoneActions({ milestoneKey, isPractice, isComplete, locked, actionLabel, lesson, certificationGate }: {
   milestoneKey: string;
   isPractice: boolean;
   isComplete: boolean;
   locked: boolean;
   actionLabel: string;
   lesson?: TrainingLesson | undefined;
+  certificationGate: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function TrainingMilestoneActions({ milestoneKey, isPractice, isComplete,
     <div className="flex flex-col gap-2 sm:flex-row">
       {lesson && <Button type="button" onClick={() => { setError(null); setLessonOpen(true); }} variant="outline" className="w-full shrink-0 sm:w-auto">{isComplete ? "Review Lesson" : actionLabel}<ArrowRight className="size-4" /></Button>}
       {isPractice && !isComplete && <Button type="button" onClick={() => update("in_progress")} disabled={isPending} variant="outline" className="w-full shrink-0 sm:w-auto">{isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Play className="size-4" />}{actionLabel}</Button>}
-      {!isComplete && !lesson && <Button type="button" onClick={() => update("complete")} disabled={isPending} className="w-full shrink-0 sm:w-auto">{isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}{isPractice ? "Mark Complete" : actionLabel}</Button>}
+      {!isComplete && !lesson && !certificationGate && <Button type="button" onClick={() => update("complete")} disabled={isPending} className="w-full shrink-0 sm:w-auto">{isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}{isPractice ? "Mark Complete" : actionLabel}</Button>}
       {isComplete && !isPractice && !lesson && <Button type="button" variant="outline" disabled className="w-full shrink-0 sm:w-auto"><Check className="size-4" />Completed</Button>}
       {isComplete && isPractice && <Button type="button" onClick={() => update("in_progress")} disabled={isPending} variant="outline" className="w-full shrink-0 sm:w-auto">Practice again<ArrowRight className="size-4" /></Button>}
     </div>
