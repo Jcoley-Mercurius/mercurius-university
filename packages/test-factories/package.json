@@ -1,0 +1,9 @@
+{
+  "name": "@mercurius/test-factories",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo Test-factory workspace scaffolded",
+    "typecheck": "echo 'Test-factory workspace scaffolded; no TypeScript sources yet'"
+  }
+}

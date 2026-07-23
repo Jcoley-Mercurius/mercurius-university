@@ -1,0 +1,11 @@
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+reports/
+.stryker-tmp/
+.next/
+*.tsbuildinfo
+.env*
+!.env.example
+!.env.local.example

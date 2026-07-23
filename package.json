@@ -1,0 +1,13 @@
+{
+  "name": "mercurius-university",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @mercurius/domain test && pnpm --filter @mercurius/db test",
+    "test:coverage": "pnpm --filter @mercurius/domain test:coverage",
+    "test:mutation": "pnpm --filter @mercurius/domain test:mutation",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
