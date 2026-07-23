@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
+  Award,
+  BadgePercent,
   BookOpenCheck,
   Bot,
   Check,
@@ -12,9 +14,11 @@ import {
   LayoutDashboard,
   LockKeyhole,
   LogOut,
+  MessageSquareText,
   Play,
   Sparkles,
   Target,
+  Timer,
   UserRound,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
@@ -99,9 +103,16 @@ export default async function TrainingPage() {
 
 function ModuleCard({ module, number, progressByKey }: { module: TrainingModule; number: number; progressByKey: Record<string, ProgressRow["status"]> }) {
   const complete = module.milestones.filter((milestone) => progressByKey[milestone.key] === "complete").length;
+  const estimatedMinutes = module.milestones.reduce((total, milestone) => total + milestone.estimatedMinutes, 0);
   return <Card>
-    <CardHeader><div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e8f2ec] text-[#1c6348]">{moduleIcons[module.key]}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[#7b877f]">Module {number}</p><Badge>{complete}/{module.milestones.length} complete</Badge></div><h3 className="mt-1 text-lg font-bold">{module.title}</h3><p className="mt-1 text-sm leading-6 text-[#6b776f]">{module.description}</p></div></div></CardHeader>
-    <CardContent><div className="divide-y rounded-xl border">{module.milestones.map((milestone) => <MilestoneRow key={milestone.key} milestone={milestone} savedStatus={progressByKey[milestone.key]} />)}</div></CardContent>
+    <CardHeader><div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e8f2ec] text-[#1c6348]">{moduleIcons[module.key]}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[#7b877f]">Module {number}</p><Badge>{complete}/{module.milestones.length} complete</Badge><Badge className="bg-[#f2f4f3] text-[#66736b]"><Timer className="mr-1 size-3" />~{estimatedMinutes} min</Badge></div><h3 className="mt-1 text-lg font-bold">{module.title}</h3><p className="mt-1 text-sm leading-6 text-[#6b776f]">{module.description}</p></div></div></CardHeader>
+    <CardContent className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-[#dbe7e0] bg-[#f5f9f7] p-4"><p className="text-xs font-bold uppercase tracking-[.12em] text-[#35624c]">Why it matters</p><p className="mt-2 text-sm leading-6 text-[#52645a]">{module.whyItMatters}</p></div>
+        <div className="rounded-xl border bg-[#fafbfa] p-4"><p className="text-xs font-bold uppercase tracking-[.12em] text-[#647169]">Learning objectives</p><ul className="mt-2 space-y-1.5">{module.objectives.map((objective) => <li key={objective} className="flex gap-2 text-sm leading-5 text-[#59675f]"><Check className="mt-0.5 size-3.5 shrink-0 text-[#2b7556]" />{objective}</li>)}</ul></div>
+      </div>
+      <div className="divide-y rounded-xl border">{module.milestones.map((milestone) => <MilestoneRow key={milestone.key} milestone={milestone} savedStatus={progressByKey[milestone.key]} />)}</div>
+    </CardContent>
   </Card>;
 }
 
@@ -110,16 +121,23 @@ function MilestoneRow({ milestone, savedStatus }: { milestone: TrainingMilestone
   const status = statusDetails[milestoneStatus];
   return <div className="flex flex-col gap-3 bg-white p-4 first:rounded-t-xl last:rounded-b-xl sm:flex-row sm:items-center">
     <span className={`grid size-8 shrink-0 place-items-center rounded-full ${status.iconClass}`}>{status.icon}</span>
-    <div className="min-w-0 flex-1"><p className="font-semibold">{milestone.title}</p><p className="mt-1 text-xs leading-5 text-[#6b776f]">{milestone.description}</p><p className={`mt-1 text-xs font-semibold ${status.textClass}`}>{status.label}</p></div>
-    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={milestone.locked === true} />
+    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{milestone.title}</p><Badge className={activityDetails[milestone.type].className}>{activityDetails[milestone.type].label}</Badge></div><p className="mt-1 text-xs leading-5 text-[#6b776f]">{milestone.description}</p><div className="mt-2 flex flex-wrap items-center gap-3"><p className={`text-xs font-semibold ${status.textClass}`}>{status.label}</p><p className="flex items-center gap-1 text-xs text-[#7a867f]"><Timer className="size-3.5" />{milestone.estimatedMinutes} min</p></div></div>
+    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={milestone.locked === true} actionLabel={milestone.actionLabel} />
   </div>;
 }
 
 const moduleIcons: Record<string, React.ReactNode> = {
   orientation: <LayoutDashboard className="size-5" />, packaging: <Sparkles className="size-5" />,
-  discovery: <Target className="size-5" />, "quote-lab": <FlaskConical className="size-5" />,
-  certification: <GraduationCap className="size-5" />,
+  discovery: <Target className="size-5" />, pricing: <BadgePercent className="size-5" />,
+  "quote-lab": <FlaskConical className="size-5" />, scenarios: <MessageSquareText className="size-5" />,
+  certification: <Award className="size-5" />,
 };
+
+const activityDetails = {
+  learn: { label: "Learn", className: "bg-[#edf3fb] text-[#365b80]" },
+  practice: { label: "Practice", className: "bg-[#fff1dc] text-[#845713]" },
+  certification: { label: "Certification", className: "bg-[#f0eafa] text-[#62458a]" },
+} as const;
 
 const statusDetails: Record<MilestoneStatus, { label: string; icon: React.ReactNode; iconClass: string; textClass: string }> = {
   complete: { label: "Complete", icon: <Check className="size-4" />, iconClass: "bg-[#dcece3] text-[#246247]", textClass: "text-[#287054]" },
