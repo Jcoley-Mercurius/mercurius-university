@@ -66,6 +66,14 @@ The migration creates tenancy prerequisites, quote tables, constraints, indexes,
 policies, and the immutable-snapshot trigger in one transaction. Apply it once to a fresh
 project. You can alternatively paste it into Supabase **SQL Editor** and select **Run**.
 
+After `0001`, apply persistent Training Hub progress:
+
+```bash
+corepack pnpm --filter @mercurius/db db:migrate -- 0002_training_progress.sql
+```
+
+This creates the per-membership milestone progress table and own-rep RLS policies.
+
 ## 4. Create the seed rep
 
 Memberships reference `auth.users`, so the seed deliberately does not invent an Auth row:

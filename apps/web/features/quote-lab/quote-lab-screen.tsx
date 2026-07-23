@@ -34,9 +34,10 @@ const initialDraftBase: Pick<QuoteDraft, "coreCode" | "enhancementCodes" | "adSp
   coreCode: "SPARK", enhancementCodes: [], adSpendDollars: "", notes: "",
 };
 
-function createInitialDraft(mode: QuoteMode): QuoteDraft {
+function createInitialDraft(mode: QuoteMode, initialScenarioId?: string): QuoteDraft {
+  const scenario = scenarios.find((item) => item.id === initialScenarioId) ?? scenarios[0];
   return mode === "practice"
-    ? { ...initialDraftBase, mode, vendorName: scenarios[0].vendor, vendorPain: scenarios[0].pain, scenarioId: scenarios[0].id }
+    ? { ...initialDraftBase, mode, vendorName: scenario.vendor, vendorPain: scenario.pain, scenarioId: scenario.id }
     : { ...initialDraftBase, mode, scenarioId: "", vendorName: "", vendorPain: "" };
 }
 
@@ -57,8 +58,8 @@ export interface RepIdentity {
   readonly hasMembership: boolean;
 }
 
-export function QuoteLabScreen({ rep, initialMode = "live" }: { rep: RepIdentity; initialMode?: QuoteMode }) {
-  const [draft, setDraft] = useState(() => createInitialDraft(initialMode));
+export function QuoteLabScreen({ rep, initialMode = "live", initialScenarioId }: { rep: RepIdentity; initialMode?: QuoteMode; initialScenarioId?: string | undefined }) {
+  const [draft, setDraft] = useState(() => createInitialDraft(initialMode, initialScenarioId));
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
   const [saveResult, setSaveResult] = useState<SaveQuoteUiResult | null>(null);
   const [pdfState, setPdfState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
