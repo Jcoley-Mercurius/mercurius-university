@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { AlertTriangle, BookOpenCheck, CheckCircle2, FileDown, FlaskConical, GraduationCap, LoaderCircle, LogOut, Save, Store, Target, UserRound } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, BookOpenCheck, CheckCircle2, FileDown, FlaskConical, GraduationCap, LayoutDashboard, LoaderCircle, LogOut, Save, Store, Target, UserRound } from "lucide-react";
 import { calculateQuote, PRICING_2026_06_30, type QuoteInput } from "@mercurius/domain";
 import { saveQuoteAction, type SaveQuoteUiResult } from "@/app/actions/save-quote";
 import { logoutAction } from "@/app/actions/auth";
@@ -29,10 +30,15 @@ const scenarios = [
   { id: "6d455243-5552-4955-b300-000000000002", name: "Wellness retention challenge", vendor: "Juniper Wellness Collective", pain: "retention", brief: "A wellness collective needs better retention and a consistent social presence." },
 ] as const;
 
-const initialDraft: QuoteDraft = {
-  mode: "practice", coreCode: "SPARK", enhancementCodes: [], adSpendDollars: "",
-  vendorName: scenarios[0].vendor, vendorPain: scenarios[0].pain, scenarioId: scenarios[0].id, notes: "",
+const initialDraftBase: Pick<QuoteDraft, "coreCode" | "enhancementCodes" | "adSpendDollars" | "notes"> = {
+  coreCode: "SPARK", enhancementCodes: [], adSpendDollars: "", notes: "",
 };
+
+function createInitialDraft(mode: QuoteMode): QuoteDraft {
+  return mode === "practice"
+    ? { ...initialDraftBase, mode, vendorName: scenarios[0].vendor, vendorPain: scenarios[0].pain, scenarioId: scenarios[0].id }
+    : { ...initialDraftBase, mode, scenarioId: "", vendorName: "", vendorPain: "" };
+}
 
 function dollarsToCents(value: string) {
   const parsed = Number(value.replace(/,/g, ""));
@@ -51,8 +57,8 @@ export interface RepIdentity {
   readonly hasMembership: boolean;
 }
 
-export function QuoteLabScreen({ rep }: { rep: RepIdentity }) {
-  const [draft, setDraft] = useState(initialDraft);
+export function QuoteLabScreen({ rep, initialMode = "live" }: { rep: RepIdentity; initialMode?: QuoteMode }) {
+  const [draft, setDraft] = useState(() => createInitialDraft(initialMode));
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
   const [saveResult, setSaveResult] = useState<SaveQuoteUiResult | null>(null);
   const [pdfState, setPdfState] = useState<{ loading: boolean; error: string | null }>({ loading: false, error: null });
@@ -147,6 +153,8 @@ export function QuoteLabScreen({ rep }: { rep: RepIdentity }) {
         <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#164f3b] text-white"><FlaskConical className="size-5" /></span><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#777f79]">Mercurius University</p><h1 className="text-lg font-bold">Quote Lab</h1></div></div>
         <div className="flex items-center gap-2">
           <Badge className="hidden lg:inline-flex">Catalog · 2026-06-30</Badge>
+          <Button asChild variant="ghost" className="min-h-10 px-3"><Link href="/dashboard"><LayoutDashboard className="size-4" /><span className="hidden md:inline">Dashboard</span></Link></Button>
+          <Button asChild variant="ghost" className="min-h-10 px-3"><Link href="/training"><GraduationCap className="size-4" /><span className="hidden lg:inline">Training</span></Link></Button>
           <div className="hidden items-center gap-2 rounded-xl border bg-[#f8faf8] px-3 py-2 sm:flex">
             <span className="grid size-7 place-items-center rounded-full bg-[#e3eee8] text-[#245c45]"><UserRound className="size-4" /></span>
             <div className="max-w-40"><p className="truncate text-xs font-bold">{rep.name}</p><p className="truncate text-[11px] text-[#6e7a73]">{rep.organizationName ?? "Membership required"}</p></div>

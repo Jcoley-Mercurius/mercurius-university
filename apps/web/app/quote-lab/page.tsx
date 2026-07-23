@@ -8,7 +8,9 @@ interface MembershipRow {
   organization_name: string;
 }
 
-export default async function QuoteLabPage() {
+export default async function QuoteLabPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
+  const { mode } = await searchParams;
+  const initialMode = mode === "practice" ? "practice" : "live";
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/quote-lab");
@@ -34,5 +36,5 @@ export default async function QuoteLabPage() {
     role: membership?.role ?? null,
     organizationName: membership?.organization_name ?? null,
     hasMembership: membership !== undefined,
-  }} />;
+  }} initialMode={initialMode} />;
 }

@@ -21,7 +21,10 @@ export async function refreshSession(request: NextRequest) {
 
   // getUser validates the token and refreshes expired sessions when possible.
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user && request.nextUrl.pathname.startsWith("/quote-lab")) {
+  const protectedRoute = request.nextUrl.pathname.startsWith("/dashboard")
+    || request.nextUrl.pathname.startsWith("/quote-lab")
+    || request.nextUrl.pathname.startsWith("/training");
+  if (!user && protectedRoute) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
