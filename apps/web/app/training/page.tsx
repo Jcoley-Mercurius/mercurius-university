@@ -122,7 +122,7 @@ function MilestoneRow({ milestone, savedStatus }: { milestone: TrainingMilestone
   return <div className="flex flex-col gap-3 bg-white p-4 first:rounded-t-xl last:rounded-b-xl sm:flex-row sm:items-center">
     <span className={`grid size-8 shrink-0 place-items-center rounded-full ${status.iconClass}`}>{status.icon}</span>
     <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{milestone.title}</p><Badge className={activityDetails[milestone.type].className}>{activityDetails[milestone.type].label}</Badge></div><p className="mt-1 text-xs leading-5 text-[#6b776f]">{milestone.description}</p><div className="mt-2 flex flex-wrap items-center gap-3"><p className={`text-xs font-semibold ${status.textClass}`}>{status.label}</p><p className="flex items-center gap-1 text-xs text-[#7a867f]"><Timer className="size-3.5" />{milestone.estimatedMinutes} min</p></div></div>
-    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={milestone.locked === true} actionLabel={milestone.actionLabel} />
+    <TrainingMilestoneActions milestoneKey={milestone.key} isPractice={milestone.practiceScenarioId !== undefined} isComplete={milestoneStatus === "complete"} locked={milestone.locked === true} actionLabel={milestone.actionLabel} lesson={milestone.lesson} />
   </div>;
 }
 
